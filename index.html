@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Fricción - Segunda Ley de Newton</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="logo">
+          <div class="logo-icon">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2"/>
+              <path d="M10 16h12M16 10v12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="16" cy="16" r="4" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="logo-text">
+            <h1>PhysicsLab</h1>
+            <span class="subtitle">Simulador de Fricción</span>
+          </div>
+        </div>
+        <div class="header-badge">
+          <span class="badge">Segunda Ley de Newton</span>
+          <span class="badge secondary">F = ma</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Control Panel -->
+      <aside class="control-panel">
+        <div class="panel-header">
+          <h2>Panel de Control</h2>
+          <p class="panel-description">Configura los parámetros de la simulación</p>
+        </div>
+
+        <!-- Object Selector -->
+        <div class="control-section">
+          <div class="section-header">
+            <span class="section-icon">📦</span>
+            <h3>Objeto</h3>
+          </div>
+          <div class="object-selector" id="objectSelector">
+            <button class="object-btn active" data-object="metal-box" title="Caja Metálica">
+              <div class="object-preview metal-box-preview"></div>
+              <span>Caja Metálica</span>
+            </button>
+            <button class="object-btn" data-object="ball" title="Pelota">
+              <div class="object-preview ball-preview"></div>
+              <span>Pelota</span>
+            </button>
+            <button class="object-btn" data-object="car" title="Automóvil">
+              <div class="object-preview car-preview"></div>
+              <span>Automóvil</span>
+            </button>
+            <button class="object-btn" data-object="wood-block" title="Bloque de Madera">
+              <div class="object-preview wood-block-preview"></div>
+              <span>Bloque</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Force Input -->
+        <div class="control-section">
+          <div class="section-header">
+            <span class="section-icon">⚡</span>
+            <h3>Fuerza Aplicada</h3>
+          </div>
+          <div class="input-group">
+            <div class="input-wrapper">
+              <input type="number" id="force" value="50" min="0" max="1000" step="1">
+              <span class="input-unit">N</span>
+            </div>
+            <input type="range" id="forceRange" min="0" max="500" value="50" class="range-slider">
+            <div class="input-info">
+              <span class="info-label">Newton (N)</span>
+              <span class="info-tooltip" data-tooltip="La fuerza es una magnitud vectorial que mide la intensidad del empuje o tirón aplicado al objeto">ℹ️</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mass Input -->
+        <div class="control-section">
+          <div class="section-header">
+            <span class="section-icon">⚖️</span>
+            <h3>Masa del Objeto</h3>
+          </div>
+          <div class="input-group">
+            <div class="input-wrapper">
+              <input type="number" id="mass" value="5" min="0.1" max="100" step="0.1">
+              <span class="input-unit">kg</span>
+            </div>
+            <input type="range" id="massRange" min="1" max="50" value="5" class="range-slider">
+            <div class="input-info">
+              <span class="info-label">Kilogramos (kg)</span>
+              <span class="info-tooltip" data-tooltip="La masa es la cantidad de materia que contiene un objeto. A mayor masa, mayor inercia.">ℹ️</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Surface Selector -->
+        <div class="control-section">
+          <div class="section-header">
+            <span class="section-icon">🏔️</span>
+            <h3>Tipo de Superficie</h3>
+          </div>
+          <div class="surface-selector" id="surfaceSelector">
+            <button class="surface-btn active" data-surface="ice" title="Hielo - Muy baja fricción">
+              <div class="surface-preview ice-preview"></div>
+              <div class="surface-info">
+                <span class="surface-name">Hielo</span>
+                <span class="surface-mu">μₖ = 0.02</span>
+              </div>
+            </button>
+            <button class="surface-btn" data-surface="wood" title="Madera - Fricción media">
+              <div class="surface-preview wood-preview"></div>
+              <div class="surface-info">
+                <span class="surface-name">Madera</span>
+                <span class="surface-mu">μₖ = 0.40</span>
+              </div>
+            </button>
+            <button class="surface-btn" data-surface="sand" title="Arena - Alta fricción">
+              <div class="surface-preview sand-preview"></div>
+              <div class="surface-info">
+                <span class="surface-name">Arena</span>
+                <span class="surface-mu">μₖ = 0.60</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <div class="control-section action-section">
+          <button class="simulate-btn" id="simulateBtn">
+            <span class="btn-icon">▶</span>
+            <span class="btn-text">Iniciar Simulación</span>
+          </button>
+          <button class="reset-btn" id="resetBtn">
+            <span class="btn-icon">↺</span>
+            <span class="btn-text">Reiniciar</span>
+          </button>
+        </div>
+
+        <!-- Friction Info -->
+        <div class="control-section info-section">
+          <div class="friction-info-card">
+            <h4>¿Qué es la fricción?</h4>
+            <p>La fricción es una fuerza que se opone al movimiento relativo entre dos superficies en contacto.</p>
+            <div class="friction-types">
+              <div class="friction-type">
+                <span class="type-label static">Estática (μₛ)</span>
+                <span class="type-desc">Impide que el objeto comience a moverse</span>
+              </div>
+              <div class="friction-type">
+                <span class="type-label kinetic">Cinética (μₖ)</span>
+                <span class="type-desc">Actúa cuando el objeto está en movimiento</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Simulation Area -->
+      <section class="simulation-area">
+        <!-- HUD Panel -->
+        <div class="hud-panel" id="hudPanel">
+          <div class="hud-item">
+            <span class="hud-label">Estado</span>
+            <span class="hud-value" id="hudState">En reposo</span>
+            <span class="hud-indicator idle" id="stateIndicator"></span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Velocidad</span>
+            <span class="hud-value"><span id="hudVelocity">0.00</span> <small>m/s</small></span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Distancia</span>
+            <span class="hud-value"><span id="hudDistance">0.00</span> <small>m</small></span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Aceleración</span>
+            <span class="hud-value"><span id="hudAcceleration">0.00</span> <small>m/s²</small></span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Fricción</span>
+            <span class="hud-value" id="hudFrictionType">Estática</span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Fuerza Normal</span>
+            <span class="hud-value"><span id="hudNormalForce">0.00</span> <small>N</small></span>
+          </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="canvas-container">
+          <canvas id="canvas"></canvas>
+          <div class="canvas-overlay" id="canvasOverlay">
+            <div class="overlay-content">
+              <span class="overlay-icon">🎯</span>
+              <span class="overlay-text">Configura los parámetros e inicia la simulación</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Result Panel -->
+        <div class="result-panel" id="resultPanel">
+          <div class="result-content">
+            <span class="result-icon" id="resultIcon">📊</span>
+            <span class="result-text" id="resultText">Configura los parámetros y presiona "Iniciar Simulación"</span>
+          </div>
+        </div>
+
+        <!-- Formula Display -->
+        <div class="formula-display">
+          <div class="formula-card">
+            <span class="formula-title">Segunda Ley de Newton</span>
+            <span class="formula">F = m · a</span>
+          </div>
+          <div class="formula-card">
+            <span class="formula-title">Fuerza de Fricción</span>
+            <span class="formula">f = μ · N</span>
+          </div>
+          <div class="formula-card">
+            <span class="formula-title">Fuerza Normal</span>
+            <span class="formula">N = m · g</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Simulador Educativo de Física - Segunda Ley de Newton y Fricción</p>
+      <p class="footer-sub">Proyecto Universitario | HTML, CSS, JavaScript</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
