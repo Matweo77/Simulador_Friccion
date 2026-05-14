@@ -326,7 +326,7 @@ function updateHUD() {
   const normalForce = mass * GRAVITY;
 
   hudState.textContent = stateNames[state];
-  // hudVelocity.textContent = velocity.toFixed(2);
+  hudVelocity.textContent = velocity.toFixed(2);
   hudDistance.textContent = distance.toFixed(2);
   hudTime.textContent = simulationTime.toFixed(2);
   hudAcceleration.textContent = Math.abs(acceleration).toFixed(2);
