@@ -286,6 +286,25 @@ body {
   color: var(--primary-light);
 }
 
+/* Object Info Display */
+.object-info {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: center;
+}
+
+.object-info-text {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.object-info-text strong {
+  color: var(--primary-light);
+  font-weight: 600;
+}
+
 .object-preview {
   width: 40px;
   height: 40px;
@@ -293,42 +312,65 @@ body {
 }
 
 .metal-box-preview {
-  background: linear-gradient(145deg, #9ca3af, #6b7280);
+  background: linear-gradient(145deg, #d1d5db, #6b7280);
   border: 2px solid #4b5563;
-}
-
-.ball-preview {
-  background: radial-gradient(circle at 30% 30%, #ef4444, #991b1b);
-  border-radius: 50%;
-}
-
-.car-preview {
-  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
-  border-radius: var(--radius-sm) var(--radius-sm) var(--radius-xs) var(--radius-xs);
   position: relative;
 }
 
-.car-preview::after {
+.metal-box-preview::after {
   content: '';
   position: absolute;
-  bottom: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 30px;
-  height: 8px;
-  background: #1f2937;
-  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  width: 60%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
 }
 
-.wood-block-preview {
+.wood-box-preview {
   background: repeating-linear-gradient(
     90deg,
-    #d97706,
-    #d97706 4px,
-    #92400e 4px,
-    #92400e 8px
+    #d97706 0px,
+    #d97706 3px,
+    #92400e 3px,
+    #92400e 6px,
+    #b45309 6px,
+    #b45309 9px
   );
   border: 2px solid #78350f;
+}
+
+.cardboard-box-preview {
+  background: linear-gradient(145deg, #d4a574, #a67c52);
+  border: 2px solid #8b5a2b;
+  position: relative;
+}
+
+.cardboard-box-preview::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 30%;
+  width: 40%;
+  height: 100%;
+  background: #d4b896;
+  border-left: 1px solid #a67c52;
+  border-right: 1px solid #a67c52;
+}
+
+.concrete-block-preview {
+  background: linear-gradient(145deg, #6b7280, #374151);
+  border: 2px solid #1f2937;
+  position: relative;
+}
+
+.concrete-block-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(0,0,0,0.2) 1px, transparent 1px);
+  background-size: 4px 4px;
 }
 
 /* Input Group */
@@ -851,6 +893,11 @@ canvas {
   box-shadow: var(--shadow-glow);
 }
 
+.formula-card.highlight {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.1);
+}
+
 .formula-title {
   display: block;
   font-size: 0.75rem;
@@ -865,6 +912,14 @@ canvas {
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--primary-light);
+}
+
+.formula-result {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: var(--spacing-xs);
+  font-family: var(--font-display);
 }
 
 /* ========================================

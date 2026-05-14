@@ -19,24 +19,25 @@ window.addEventListener("resize", resizeCanvas);
 // ===== CONSTANTS =====
 const SCALE = 50; // 50 px = 1 m
 const GRAVITY = 9.8;
-const CAMERA_OFFSET = 250;
+const CAMERA_OFFSET = 150; // Offset de camara para que el objeto sea visible
 const VELOCITY_STOP_THRESHOLD = 0.02;
+const INITIAL_POSITION_METERS = 0; // El objeto inicia exactamente en 0 metros
 
 // ===== GAME STATE =====
 let state = "idle"; // "idle" | "running" | "end"
 
 // ===== OBJECT STATE =====
-let objectX = 0;
+let objectX = INITIAL_POSITION_METERS * SCALE; // Posicion en pixeles (0 metros = 0 pixeles)
 let velocity = 0;
 let mass = 5;
 let appliedForce = 50;
 let acceleration = 0;
 
 // ===== CAMERA =====
-let cameraX = 0;
+let cameraX = -CAMERA_OFFSET; // Camara inicial para ver el metro 0
 
 // ===== DISTANCE =====
-let startX = 0;
+let startX = INITIAL_POSITION_METERS * SCALE; // Posicion inicial en pixeles
 let distance = 0;
 
 // ===== FRICTION COEFFICIENTS =====
@@ -73,36 +74,51 @@ const surfaces = {
 };
 
 // ===== OBJECT TYPES =====
+// Solo objetos que se deslizan (NO ruedas, pelotas, automóviles)
 let currentObject = "metal-box";
 const objects = {
   "metal-box": {
     name: "Caja Metálica",
-    width: 50,
-    height: 50,
+    width: 55,
+    height: 55,
+    defaultMass: 8,
+    frictionMultiplier: 0.47,  // Metal sobre superficies
+    color: "#6b7280",
     draw: drawMetalBox
   },
-  "ball": {
-    name: "Pelota",
+  "wood-box": {
+    name: "Caja de Madera",
     width: 50,
     height: 50,
-    draw: drawBall
+    defaultMass: 5,
+    frictionMultiplier: 0.40,  // Madera sobre superficies
+    color: "#d97706",
+    draw: drawWoodBox
   },
-  "car": {
-    name: "Automóvil",
-    width: 80,
-    height: 40,
-    draw: drawCar
-  },
-  "wood-block": {
-    name: "Bloque de Madera",
-    width: 60,
+  "cardboard-box": {
+    name: "Caja de Cartón",
+    width: 48,
     height: 45,
-    draw: drawWoodBlock
+    defaultMass: 2,
+    frictionMultiplier: 0.35,  // Cartón sobre superficies
+    color: "#a16207",
+    draw: drawCardboardBox
+  },
+  "concrete-block": {
+    name: "Bloque de Concreto",
+    width: 60,
+    height: 50,
+    defaultMass: 15,
+    frictionMultiplier: 0.55,  // Concreto sobre superficies
+    color: "#6b7280",
+    draw: drawConcreteBlock
   }
 };
 
 // ===== TIME =====
 let lastTime = 0;
+let simulationTime = 0;  // Tiempo de simulación en segundos
+let frictionForce = 0;   // Fuerza de fricción actual
 
 // ===== HELPERS =====
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -123,10 +139,24 @@ const canvasOverlay = document.getElementById("canvasOverlay");
 const hudState = document.getElementById("hudState");
 const hudVelocity = document.getElementById("hudVelocity");
 const hudDistance = document.getElementById("hudDistance");
+const hudTime = document.getElementById("hudTime");
 const hudAcceleration = document.getElementById("hudAcceleration");
-const hudFrictionType = document.getElementById("hudFrictionType");
+const hudAppliedForce = document.getElementById("hudAppliedForce");
+const hudMass = document.getElementById("hudMass");
+const hudFrictionCoef = document.getElementById("hudFrictionCoef");
 const hudNormalForce = document.getElementById("hudNormalForce");
+const hudFrictionForce = document.getElementById("hudFrictionForce");
+const hudFrictionType = document.getElementById("hudFrictionType");
 const stateIndicator = document.getElementById("stateIndicator");
+
+// ===== OBJECT INFO ELEMENTS =====
+const objectMassEl = document.getElementById("objectMass");
+const objectFrictionEl = document.getElementById("objectFriction");
+
+// ===== FORMULA ELEMENTS =====
+const formulaNewton = document.getElementById("formulaNewton");
+const formulaFriction = document.getElementById("formulaFriction");
+const formulaNormal = document.getElementById("formulaNormal");
 
 // ===== RESULT ELEMENTS =====
 const resultPanel = document.getElementById("resultPanel");
@@ -166,8 +196,27 @@ function setupObjectSelector() {
       buttons.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       currentObject = btn.dataset.object;
+      
+      // Actualizar masa con el valor predeterminado del objeto
+      const obj = objects[currentObject];
+      mass = obj.defaultMass;
+      massInput.value = mass;
+      massRange.value = mass;
+      
+      // Actualizar info del objeto
+      updateObjectInfo();
+      updateHUD();
+      updateFormulas();
     });
   });
+}
+
+// ===== UPDATE OBJECT INFO =====
+function updateObjectInfo() {
+  const obj = objects[currentObject];
+  const effectiveMu = obj.frictionMultiplier * (muKinetic / 0.02); // Normalizado respecto al hielo
+  objectMassEl.textContent = `${obj.defaultMass} kg`;
+  objectFrictionEl.textContent = `μ = ${obj.frictionMultiplier.toFixed(2)}`;
 }
 
 // ===== SURFACE SELECTION =====
@@ -196,17 +245,26 @@ function startSimulation() {
   mass = parseFloat(massInput.value) || 1;
   applySurface();
 
+  // Obtener el multiplicador de fricción del objeto
+  const obj = objects[currentObject];
+  const effectiveMuStatic = muStatic * obj.frictionMultiplier;
+  const effectiveMuKinetic = muKinetic * obj.frictionMultiplier;
+
   // Normal force
   const normalForce = mass * GRAVITY;
 
-  // Max static friction
-  const maxStaticFriction = muStatic * normalForce;
+  // Max static friction (usando fricción efectiva del objeto)
+  const maxStaticFriction = effectiveMuStatic * normalForce;
 
-  // Reset
-  objectX = startX = 100;
+  // Reset - El objeto inicia en 0 metros
+  objectX = INITIAL_POSITION_METERS * SCALE;
+  startX = INITIAL_POSITION_METERS * SCALE;
   distance = 0;
   velocity = 0;
   acceleration = 0;
+  simulationTime = 0;
+  frictionForce = 0;
+  cameraX = -CAMERA_OFFSET; // Reset camara para ver el inicio
 
   // Hide overlay
   canvasOverlay.classList.remove("visible");
@@ -216,6 +274,7 @@ function startSimulation() {
     state = "end";
     setResult("warning", "⚠️", `La fuerza aplicada (${appliedForce.toFixed(1)} N) no supera la fricción estática (${maxStaticFriction.toFixed(1)} N). El objeto no se mueve.`);
     updateHUD();
+    updateFormulas();
     return;
   }
 
@@ -225,19 +284,24 @@ function startSimulation() {
   
   setResult("info", "🚀", "Simulación en progreso...");
   updateHUD();
+  updateFormulas();
 }
 
 // ===== RESET SIMULATION =====
 function resetSimulation() {
   state = "idle";
-  objectX = 100;
+  objectX = INITIAL_POSITION_METERS * SCALE;
+  startX = INITIAL_POSITION_METERS * SCALE;
   velocity = 0;
   distance = 0;
   acceleration = 0;
-  cameraX = 0;
+  cameraX = -CAMERA_OFFSET;
+  simulationTime = 0;
+  frictionForce = 0;
 
   setResult("info", "📊", "Configura los parámetros y presiona \"Iniciar Simulación\"");
   updateHUD();
+  updateFormulas();
 }
 
 // ===== SET RESULT =====
@@ -257,14 +321,41 @@ function updateHUD() {
     end: "Detenido"
   };
 
+  const obj = objects[currentObject];
+  const effectiveMu = muKinetic * obj.frictionMultiplier;
+  const normalForce = mass * GRAVITY;
+
   hudState.textContent = stateNames[state];
-  hudVelocity.textContent = velocity.toFixed(2);
+  // hudVelocity.textContent = velocity.toFixed(2);
   hudDistance.textContent = distance.toFixed(2);
+  hudTime.textContent = simulationTime.toFixed(2);
   hudAcceleration.textContent = Math.abs(acceleration).toFixed(2);
+  hudAppliedForce.textContent = appliedForce.toFixed(2);
+  hudMass.textContent = mass.toFixed(2);
+  hudFrictionCoef.textContent = `μ = ${effectiveMu.toFixed(3)}`;
+  hudNormalForce.textContent = normalForce.toFixed(2);
+  hudFrictionForce.textContent = frictionForce.toFixed(2);
   hudFrictionType.textContent = state === "running" ? "Cinética" : "Estática";
-  hudNormalForce.textContent = (mass * GRAVITY).toFixed(2);
 
   stateIndicator.className = "hud-indicator " + state;
+}
+
+// ===== UPDATE FORMULAS =====
+function updateFormulas() {
+  const obj = objects[currentObject];
+  const effectiveMu = muKinetic * obj.frictionMultiplier;
+  const normalForce = mass * GRAVITY;
+  const currentFrictionForce = effectiveMu * normalForce;
+  const currentAccel = state === "running" ? Math.abs(acceleration) : (appliedForce / mass);
+
+  // F = m × a
+  formulaNewton.textContent = `${appliedForce.toFixed(1)} N = ${mass.toFixed(1)} kg × ${currentAccel.toFixed(2)} m/s²`;
+  
+  // Fr = μ × N
+  formulaFriction.textContent = `Fr = ${effectiveMu.toFixed(3)} × ${normalForce.toFixed(1)} N = ${currentFrictionForce.toFixed(2)} N`;
+  
+  // N = m × g
+  formulaNormal.textContent = `N = ${mass.toFixed(1)} kg × ${GRAVITY} m/s² = ${normalForce.toFixed(2)} N`;
 }
 
 // ===== PHYSICS UPDATE =====
@@ -274,14 +365,21 @@ function update(dt) {
     return;
   }
 
+  // Obtener el multiplicador de fricción del objeto
+  const obj = objects[currentObject];
+  const effectiveMuKinetic = muKinetic * obj.frictionMultiplier;
+
   const normalForce = mass * GRAVITY;
-  const frictionForce = muKinetic * normalForce;
+  frictionForce = effectiveMuKinetic * normalForce;
   acceleration = -frictionForce / mass;
 
   velocity += acceleration * dt;
   if (velocity < 0) velocity = 0;
 
   objectX += velocity * SCALE * dt;
+
+  // Actualizar tiempo de simulación
+  simulationTime += dt;
 
   // Smooth camera
   const targetCam = objectX - CAMERA_OFFSET;
@@ -292,13 +390,15 @@ function update(dt) {
 
   // Update HUD
   updateHUD();
+  updateFormulas();
 
   // Stop condition
   if (velocity <= VELOCITY_STOP_THRESHOLD) {
     velocity = 0;
     state = "end";
-    setResult("success", "✅", `El objeto recorrió ${distance.toFixed(2)} metros antes de detenerse por la fricción.`);
+    setResult("success", "✅", `El objeto recorrió ${distance.toFixed(2)} metros en ${simulationTime.toFixed(2)} segundos antes de detenerse por la fricción.`);
     updateHUD();
+    updateFormulas();
   }
 }
 
@@ -335,8 +435,9 @@ function draw() {
   drawDistanceMarkers(groundY);
 
   // Draw object
+  // objectX representa el CENTRO del objeto en el mundo
   const obj = objects[currentObject];
-  const objScreenX = objectX - cameraX;
+  const objScreenX = objectX - cameraX - (obj.width / 2); // Ajustar para dibujar desde el borde izquierdo
   const objY = groundY - obj.height;
   
   // Object shadow
@@ -459,7 +560,8 @@ function drawMetalBox(x, y, width, height) {
   // Main body
   const gradient = ctx.createLinearGradient(x, y, x + width, y + height);
   gradient.addColorStop(0, "#9ca3af");
-  gradient.addColorStop(0.5, "#d1d5db");
+  gradient.addColorStop(0.3, "#d1d5db");
+  gradient.addColorStop(0.7, "#9ca3af");
   gradient.addColorStop(1, "#6b7280");
   
   ctx.fillStyle = gradient;
@@ -471,8 +573,8 @@ function drawMetalBox(x, y, width, height) {
   ctx.strokeRect(x, y, width, height);
 
   // Shine
-  ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
-  ctx.fillRect(x + 5, y + 5, width - 20, 10);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+  ctx.fillRect(x + 5, y + 5, width - 15, 8);
 
   // Rivets
   ctx.fillStyle = "#4b5563";
@@ -482,118 +584,47 @@ function drawMetalBox(x, y, width, height) {
     ctx.arc(x + rx, y + ry, 4, 0, Math.PI * 2);
     ctx.fill();
   });
+
+  // Metal texture lines
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.1)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < height; i += 6) {
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y + i);
+    ctx.lineTo(x + width - 3, y + i);
+    ctx.stroke();
+  }
 }
 
-// ===== DRAW BALL =====
-function drawBall(x, y, width, height) {
-  const centerX = x + width / 2;
-  const centerY = y + height / 2;
-  const radius = width / 2;
-
-  // Ball gradient
-  const gradient = ctx.createRadialGradient(
-    centerX - radius * 0.3,
-    centerY - radius * 0.3,
-    0,
-    centerX,
-    centerY,
-    radius
-  );
-  gradient.addColorStop(0, "#f87171");
-  gradient.addColorStop(0.7, "#ef4444");
-  gradient.addColorStop(1, "#991b1b");
-
-  ctx.fillStyle = gradient;
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Highlight
-  ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-  ctx.beginPath();
-  ctx.ellipse(centerX - radius * 0.3, centerY - radius * 0.3, radius * 0.3, radius * 0.2, -0.5, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Border
-  ctx.strokeStyle = "#7f1d1d";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-  ctx.stroke();
-}
-
-// ===== DRAW CAR =====
-function drawCar(x, y, width, height) {
-  // Car body
-  const bodyGradient = ctx.createLinearGradient(x, y, x, y + height);
-  bodyGradient.addColorStop(0, "#60a5fa");
-  bodyGradient.addColorStop(0.5, "#3b82f6");
-  bodyGradient.addColorStop(1, "#1d4ed8");
-
-  // Main body
-  ctx.fillStyle = bodyGradient;
-  ctx.beginPath();
-  ctx.roundRect(x, y + height * 0.3, width, height * 0.7, 5);
-  ctx.fill();
-
-  // Cabin
-  ctx.fillStyle = "#1e3a5f";
-  ctx.beginPath();
-  ctx.moveTo(x + width * 0.2, y + height * 0.3);
-  ctx.lineTo(x + width * 0.3, y);
-  ctx.lineTo(x + width * 0.7, y);
-  ctx.lineTo(x + width * 0.8, y + height * 0.3);
-  ctx.closePath();
-  ctx.fill();
-
-  // Windows
-  ctx.fillStyle = "#93c5fd";
-  ctx.beginPath();
-  ctx.moveTo(x + width * 0.25, y + height * 0.28);
-  ctx.lineTo(x + width * 0.32, y + height * 0.05);
-  ctx.lineTo(x + width * 0.68, y + height * 0.05);
-  ctx.lineTo(x + width * 0.75, y + height * 0.28);
-  ctx.closePath();
-  ctx.fill();
-
-  // Wheels
-  ctx.fillStyle = "#1f2937";
-  ctx.beginPath();
-  ctx.arc(x + width * 0.2, y + height + 2, 10, 0, Math.PI * 2);
-  ctx.arc(x + width * 0.8, y + height + 2, 10, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Wheel centers
-  ctx.fillStyle = "#6b7280";
-  ctx.beginPath();
-  ctx.arc(x + width * 0.2, y + height + 2, 4, 0, Math.PI * 2);
-  ctx.arc(x + width * 0.8, y + height + 2, 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Headlight
-  ctx.fillStyle = "#fef08a";
-  ctx.fillRect(x + width - 5, y + height * 0.5, 5, 10);
-}
-
-// ===== DRAW WOOD BLOCK =====
-function drawWoodBlock(x, y, width, height) {
-  // Wood base
+// ===== DRAW WOOD BOX =====
+function drawWoodBox(x, y, width, height) {
+  // Wood base color
   ctx.fillStyle = "#d97706";
   ctx.fillRect(x, y, width, height);
 
-  // Wood grain
+  // Wood grain pattern
   ctx.strokeStyle = "#92400e";
   ctx.lineWidth = 2;
-  for (let i = 0; i < width; i += 8) {
+  for (let i = 0; i < width; i += 7) {
     ctx.beginPath();
     ctx.moveTo(x + i, y);
     ctx.bezierCurveTo(
-      x + i + 2, y + height * 0.3,
-      x + i - 2, y + height * 0.7,
-      x + i, y + height
+      x + i + 3, y + height * 0.3,
+      x + i - 3, y + height * 0.7,
+      x + i + 1, y + height
     );
     ctx.stroke();
   }
+
+  // Horizontal planks
+  ctx.strokeStyle = "#78350f";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + height * 0.33);
+  ctx.lineTo(x + width, y + height * 0.33);
+  ctx.moveTo(x, y + height * 0.66);
+  ctx.lineTo(x + width, y + height * 0.66);
+  ctx.stroke();
 
   // Border
   ctx.strokeStyle = "#78350f";
@@ -602,7 +633,128 @@ function drawWoodBlock(x, y, width, height) {
 
   // Highlight
   ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-  ctx.fillRect(x + 3, y + 3, width - 6, 8);
+  ctx.fillRect(x + 3, y + 3, width - 6, 6);
+
+  // Nails
+  ctx.fillStyle = "#57534e";
+  const nailPositions = [[6, height * 0.33], [width - 10, height * 0.33], [6, height * 0.66], [width - 10, height * 0.66]];
+  nailPositions.forEach(([nx, ny]) => {
+    ctx.beginPath();
+    ctx.arc(x + nx, y + ny, 2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+// ===== DRAW CARDBOARD BOX =====
+function drawCardboardBox(x, y, width, height) {
+  // Main cardboard color
+  const gradient = ctx.createLinearGradient(x, y, x, y + height);
+  gradient.addColorStop(0, "#d4a574");
+  gradient.addColorStop(0.5, "#c4956a");
+  gradient.addColorStop(1, "#a67c52");
+  
+  ctx.fillStyle = gradient;
+  ctx.fillRect(x, y, width, height);
+
+  // Corrugated cardboard pattern
+  ctx.strokeStyle = "rgba(139, 90, 43, 0.4)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < width; i += 4) {
+    ctx.beginPath();
+    ctx.moveTo(x + i, y);
+    ctx.lineTo(x + i, y + height);
+    ctx.stroke();
+  }
+
+  // Box flap lines (top)
+  ctx.strokeStyle = "#8b5a2b";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 10);
+  ctx.lineTo(x + width, y + 10);
+  ctx.stroke();
+
+  // Tape in the middle
+  ctx.fillStyle = "#d4b896";
+  ctx.fillRect(x + width * 0.3, y, width * 0.4, height);
+  
+  ctx.strokeStyle = "#a67c52";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + width * 0.3, y, width * 0.4, height);
+
+  // Border
+  ctx.strokeStyle = "#8b5a2b";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, width, height);
+
+  // Crease marks
+  ctx.strokeStyle = "rgba(139, 90, 43, 0.3)";
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(x + width * 0.3, y);
+  ctx.lineTo(x + width * 0.3, y + height);
+  ctx.moveTo(x + width * 0.7, y);
+  ctx.lineTo(x + width * 0.7, y + height);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// ===== DRAW CONCRETE BLOCK =====
+function drawConcreteBlock(x, y, width, height) {
+  // Main concrete color
+  const gradient = ctx.createLinearGradient(x, y, x + width, y + height);
+  gradient.addColorStop(0, "#9ca3af");
+  gradient.addColorStop(0.3, "#6b7280");
+  gradient.addColorStop(0.7, "#4b5563");
+  gradient.addColorStop(1, "#374151");
+  
+  ctx.fillStyle = gradient;
+  ctx.fillRect(x, y, width, height);
+
+  // Concrete texture (speckles)
+  ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+  for (let i = 0; i < 40; i++) {
+    const px = x + Math.random() * width;
+    const py = y + Math.random() * height;
+    const size = Math.random() * 3 + 1;
+    ctx.beginPath();
+    ctx.arc(px, py, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Light speckles
+  ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+  for (let i = 0; i < 20; i++) {
+    const px = x + Math.random() * width;
+    const py = y + Math.random() * height;
+    const size = Math.random() * 2 + 0.5;
+    ctx.beginPath();
+    ctx.arc(px, py, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Cracks
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + width * 0.2, y + height * 0.3);
+  ctx.lineTo(x + width * 0.35, y + height * 0.5);
+  ctx.lineTo(x + width * 0.3, y + height * 0.8);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x + width * 0.7, y + height * 0.2);
+  ctx.lineTo(x + width * 0.65, y + height * 0.45);
+  ctx.stroke();
+
+  // Border with rough edges
+  ctx.strokeStyle = "#374151";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x, y, width, height);
+
+  // Highlight on top edge
+  ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+  ctx.fillRect(x + 2, y + 2, width - 4, 5);
 }
 
 // ===== DRAW VELOCITY VECTOR =====
@@ -655,12 +807,23 @@ function init() {
   simulateBtn.addEventListener("click", startSimulation);
   resetBtn.addEventListener("click", resetSimulation);
 
-  // Initial state
+  // Initial state - cargar valores del objeto inicial
+  const initialObj = objects[currentObject];
+  mass = initialObj.defaultMass;
+  massInput.value = mass;
+  massRange.value = mass;
+  
   applySurface();
-  mass = parseFloat(massInput.value) || 5;
   appliedForce = parseFloat(forceInput.value) || 50;
-  objectX = 100;
+  
+  // Posicion inicial en 0 metros
+  objectX = INITIAL_POSITION_METERS * SCALE;
+  startX = INITIAL_POSITION_METERS * SCALE;
+  cameraX = -CAMERA_OFFSET;
+  
+  updateObjectInfo();
   updateHUD();
+  updateFormulas();
 
   // Start loop
   requestAnimationFrame(loop);

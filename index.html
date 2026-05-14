@@ -32,16 +32,16 @@
           <span class="badge secondary">F = ma</span>
         </div>
       </div>
-    </header>
--->
+    </header>-->
+
     <!-- Main Content -->
     <main class="main-content">
       <!-- Control Panel -->
       <aside class="control-panel">
-        <!-- <div class="panel-header">
+        <div class="panel-header">
           <h2>Panel de Control</h2>
           <p class="panel-description">Configura los parámetros de la simulación</p>
-        </div> -->
+        </div>
 
         <!-- Object Selector -->
         <div class="control-section">
@@ -50,22 +50,25 @@
             <h3>Objeto</h3>
           </div>
           <div class="object-selector" id="objectSelector">
-            <button class="object-btn active" data-object="metal-box" title="Caja Metálica">
+            <button class="object-btn active" data-object="metal-box" title="Caja Metálica - 8kg">
               <div class="object-preview metal-box-preview"></div>
-              <span>Caja Metálica</span>
+              <span>Metal</span>
             </button>
-            <button class="object-btn" data-object="ball" title="Pelota">
-              <div class="object-preview ball-preview"></div>
-              <span>Pelota</span>
+            <button class="object-btn" data-object="wood-box" title="Caja de Madera - 5kg">
+              <div class="object-preview wood-box-preview"></div>
+              <span>Madera</span>
             </button>
-            <button class="object-btn" data-object="car" title="Automóvil">
-              <div class="object-preview car-preview"></div>
-              <span>Automóvil</span>
+            <button class="object-btn" data-object="cardboard-box" title="Caja de Cartón - 2kg">
+              <div class="object-preview cardboard-box-preview"></div>
+              <span>Cartón</span>
             </button>
-            <button class="object-btn" data-object="wood-block" title="Bloque de Madera">
-              <div class="object-preview wood-block-preview"></div>
-              <span>Bloque</span>
+            <button class="object-btn" data-object="concrete-block" title="Bloque de Concreto - 15kg">
+              <div class="object-preview concrete-block-preview"></div>
+              <span>Concreto</span>
             </button>
+          </div>
+          <div class="object-info" id="objectInfo">
+            <span class="object-info-text">Masa: <strong id="objectMass">8 kg</strong> | Fricción: <strong id="objectFriction">μ = 0.47</strong></span>
           </div>
         </div>
 
@@ -178,25 +181,45 @@
             <span class="hud-value" id="hudState">En reposo</span>
             <span class="hud-indicator idle" id="stateIndicator"></span>
           </div>
-          <div class="hud-item">
+          <!-- <div class="hud-item">
             <span class="hud-label">Velocidad</span>
             <span class="hud-value"><span id="hudVelocity">0.00</span> <small>m/s</small></span>
-          </div>
+          </div> -->
           <div class="hud-item">
             <span class="hud-label">Distancia</span>
             <span class="hud-value"><span id="hudDistance">0.00</span> <small>m</small></span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Tiempo de Frenado</span>
+            <span class="hud-value"><span id="hudTime">0.00</span> <small>s</small></span>
           </div>
           <div class="hud-item">
             <span class="hud-label">Aceleración</span>
             <span class="hud-value"><span id="hudAcceleration">0.00</span> <small>m/s²</small></span>
           </div>
           <div class="hud-item">
-            <span class="hud-label">Fricción</span>
-            <span class="hud-value" id="hudFrictionType">Estática</span>
+            <span class="hud-label">Fuerza Aplicada</span>
+            <span class="hud-value"><span id="hudAppliedForce">0.00</span> <small>N</small></span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Masa del Objeto</span>
+            <span class="hud-value"><span id="hudMass">0.00</span> <small>kg</small></span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Coef. de Fricción</span>
+            <span class="hud-value" id="hudFrictionCoef">μ = 0.00</span>
           </div>
           <div class="hud-item">
             <span class="hud-label">Fuerza Normal</span>
             <span class="hud-value"><span id="hudNormalForce">0.00</span> <small>N</small></span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Fuerza de Fricción</span>
+            <span class="hud-value"><span id="hudFrictionForce">0.00</span> <small>N</small></span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Tipo de Fricción</span>
+            <span class="hud-value" id="hudFrictionType">Estática</span>
           </div>
         </div>
 
@@ -214,34 +237,37 @@
         <!-- Result Panel -->
         <div class="result-panel" id="resultPanel">
           <div class="result-content">
-            <span class="result-icon" id="resultIcon"></span>
+            <span class="result-icon" id="resultIcon">📊</span>
             <span class="result-text" id="resultText">Configura los parámetros y presiona "Iniciar Simulación"</span>
           </div>
         </div>
 
         <!-- Formula Display -->
         <div class="formula-display">
-          <div class="formula-card">
+          <div class="formula-card highlight">
             <span class="formula-title">Segunda Ley de Newton</span>
-            <span class="formula">F = m · a</span>
+            <span class="formula">F = m × a</span>
+            <span class="formula-result" id="formulaNewton">50 N = 5 kg × 10 m/s²</span>
           </div>
-          <div class="formula-card">
+          <div class="formula-card highlight">
             <span class="formula-title">Fuerza de Fricción</span>
-            <span class="formula">f = μ · N</span>
+            <span class="formula">Fr = μ × N</span>
+            <span class="formula-result" id="formulaFriction">Fr = 0.02 × 49 N</span>
           </div>
           <div class="formula-card">
             <span class="formula-title">Fuerza Normal</span>
-            <span class="formula">N = m · g</span>
+            <span class="formula">N = m × g</span>
+            <span class="formula-result" id="formulaNormal">N = 5 kg × 9.8 m/s²</span>
           </div>
         </div>
       </section>
     </main>
 
-    <!-- Footer -->
-    <!-- <footer class="footer">
+    <!-- Footer 
+    <footer class="footer">
       <p>Simulador Educativo de Física - Segunda Ley de Newton y Fricción</p>
       <p class="footer-sub">Proyecto Universitario | HTML, CSS, JavaScript</p>
-    </footer> -->
+    </footer>-->
   </div>
 
   <script src="script.js"></script>
